@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PANTHEON · terminal dos robôs</title>
+  <meta name="description" content="PANTHEON: terminal operacional dos robôs de trading — conta real, conta demo, operadores, gráfico e histórico." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230D0C0A'/%3E%3Cg fill='%23FFB000'%3E%3Crect x='5' y='9' width='3' height='14'/%3E%3Crect x='11' y='5' width='3' height='18'/%3E%3Crect x='17' y='11' width='3' height='12'/%3E%3Crect x='23' y='7' width='3' height='16'/%3E%3C/g%3E%3Crect x='4' y='24' width='24' height='2' fill='%23FFB000'/%3E%3C/svg%3E" />
+  <meta name="theme-color" content="#000000" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css?v=20261125b" />
+  <!-- Biblioteca local: o gráfico carrega mesmo sem CDN; só os dados precisam de internet -->
+  <script src="vendor/lightweight-charts.js"></script>
+</head>
+<body>
+
+<!-- CÓPIA ESTÁTICA: esta página é uma demonstração do design, sem servidor e sem conta real -->
+<div class="demo-tag">Cópia estática — dados de demonstração</div>
+
+<div class="shell">
+
+  <!-- ===== Lateral ===== -->
+  <aside class="sidebar" id="sidebar">
+    <a class="side-brand" href="#painel">
+      <!-- A marca é a colunata: doze colunas sob um mesmo telhado, uma delas acesa -->
+      <svg class="side-mark" viewBox="0 0 28 28" aria-hidden="true">
+        <g fill="currentColor">
+          <rect x="1"  y="12" width="3" height="14"/>
+          <rect x="5"  y="8"  width="3" height="18"/>
+          <rect x="9"  y="15" width="3" height="11"/>
+          <rect x="13" y="5"  width="3" height="21"/>
+          <rect x="17" y="14" width="3" height="12"/>
+          <rect x="21" y="9"  width="3" height="17"/>
+          <rect x="1"  y="9"  width="23" height="2"/>
+        </g>
+      </svg>
+      <span class="side-brand-text">
+        <span class="side-name">PANTHEON</span>
+        <span class="side-sub">Terminal dos robôs</span>
+      </span>
+    </a>
+
+    <nav class="side-nav" aria-label="Seções do terminal">
+      <span class="nav-label">Operação</span>
+      <a class="nav-item on" href="#painel" data-view="painel">Painel</a>
+      <a class="nav-item" href="#conta-real" data-view="conta-real">Conta real <span class="nav-tag" id="navRealTag" hidden>ligada</span></a>
+      <a class="nav-item" href="#conta-demo" data-view="conta-demo">Conta demo</a>
+
+      <span class="nav-label">Análise</span>
+      <a class="nav-item" href="#operadores" data-view="operadores">Operadores</a>
+      <a class="nav-item" href="#grafico" data-view="grafico">Gráfico</a>
+      <a class="nav-item" href="#operacoes" data-view="operacoes">Operações</a>
+    </nav>
+
+    <div class="side-foot">
+      <div class="side-status"><span class="side-dot" id="sideDot"></span><span id="sideStatus">conectando…</span></div>
+      <p class="side-note">Operações simuladas com dinheiro fictício. Nenhuma ordem é enviada a corretoras.</p>
+    </div>
+  </aside>
+
+  <div class="main">
+
+    <!-- ===== Barra superior ===== -->
+    <header class="topbar">
+      <div class="topbar-in">
+        <button class="nav-toggle" id="navToggle" aria-label="Abrir o menu" aria-expanded="false">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2 5h16M2 10h16M2 15h16" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>
+        </button>
+
+        <div class="ticker">
+          <span class="logo" id="logo">BTC/USDT</span>
+          <span class="price-main" id="priceMain">—</span>
+          <span class="price-change" id="priceChange">—</span>
+          <dl class="stats">
+            <div><dt>Máxima 24h</dt><dd id="high24">—</dd></div>
+            <div><dt>Mínima 24h</dt><dd id="low24">—</dd></div>
+            <div><dt>Volume 24h</dt><dd id="vol24">—</dd></div>
+          </dl>
+        </div>
+
+        <div class="topbar-right">
+          <span class="moeda-switch" id="moedaSwitch">
+            <span class="moeda-taxa" id="moedaTaxa" title="Taxa US$ → R$ usada para mostrar os valores em real">R$ 5,40 / US$</span>
+            <button type="button" class="moeda-btn on" id="moedaBRL" aria-pressed="true">R$</button>
+            <button type="button" class="moeda-btn" id="moedaUSD" aria-pressed="false">US$</button>
+          </span>
+          <span class="topbar-divider" aria-hidden="true"></span>
+          <div class="clock"><span id="clock">--:--:--</span><small>Brasília</small></div>
+          <span class="live" id="liveStatus"><span class="live-dot"></span><span id="liveText">conectando…</span></span>
+          <button class="btn ghost" id="reloadBtn">Recarregar</button>
+        </div>
+      </div>
+      <div class="tape ticker-tape" id="tape" aria-label="Cotações ao vivo das moedas dos robôs"></div>
+    </header>
+
+    <main class="canvas">
+
+      <!-- ==================== PAINEL ==================== -->
+      <section class="view" data-view="painel">
+        <div class="view-head">
+          <h1 class="view-title">Painel</h1>
+          <p class="view-sub">A carteira compartilhada e os doze operadores disputando as mesmas vagas.</p>
+          <span class="view-stamp" id="stampPainel">—</span>
+        </div>
+
+        <div class="lead" id="kpiWallet" hidden>
+          <span class="kpi-l" id="kpiWalletL">Carteira compartilhada</span>
+          <span class="kpi-v" id="kpiWalletV">—</span>
+          <span class="kpi-s" id="kpiWalletS">—</span>
+        </div>
+
+        <section class="kpis" id="kpis" aria-label="Resumo do dia">
+          <div class="kpi"><span class="kpi-l">Hoje da conta</span><span class="kpi-v" id="kpiToday">—</span><span class="kpi-s" id="kpiTodayS">—</span></div>
+          <div class="kpi"><span class="kpi-l">Posições abertas</span><span class="kpi-v" id="kpiOpen">—</span><span class="kpi-s" id="kpiOpenS">—</span></div>
+          <div class="kpi"><span class="kpi-l">Operações hoje</span><span class="kpi-v" id="kpiTrades">—</span><span class="kpi-s" id="kpiTradesS">—</span></div>
+          <div class="kpi"><span class="kpi-l">Acerto do mês</span><span class="kpi-v" id="kpiHit">—</span><span class="kpi-s" id="kpiHitS">—</span></div>
+        </section>
+
+        <!-- Notícia forte: fica aqui, no painel (decisão do dono em 16/11: nada no celular) -->
+        <div class="alerta-noticia" id="alertaNoticia" hidden>
+          <span class="alerta-icone">⚠</span>
+          <div class="alerta-texto"><b id="alertaTitulo">Notícia forte</b><span id="alertaDetalhe"></span></div>
+          <span class="alerta-quando" id="alertaQuando"></span>
+        </div>
+
+        <!-- A colunata: um operador por coluna, a altura é o resultado de hoje -->
+        <section class="panel colonnade" id="colonnade">
+          <div class="panel-head">
+            <h2 class="panel-title">Colunata · quem moveu a carteira hoje</h2>
+            <span class="panel-note" id="colonnadeNote">resultado de cada operador, em % da conta</span>
+          </div>
+          <div class="colonnade-chart" id="colonnadeChart"></div>
+        </section>
+
+        <div class="grid-2">
+          <div class="panel">
+            <h2 class="panel-title">Ao vivo <span class="pulse" aria-hidden="true"></span><span class="panel-note">operações abertas</span></h2>
+            <ol class="feed" id="liveFeed" data-lenis-prevent><li class="feed-empty">Aguardando o robô…</li></ol>
+          </div>
+          <div class="panel">
+            <h2 class="panel-title">Perto de entrar</h2>
+            <ol class="near" id="nearList" data-lenis-prevent><li class="feed-empty">Aguardando o robô…</li></ol>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== CONTA REAL ==================== -->
+      <section class="view" data-view="conta-real">
+        <div class="view-head">
+          <h1 class="view-title">Conta real</h1>
+          <p class="view-sub">Dinheiro de verdade na MEXC — saldo, posições em aberto e as operações do dia.</p>
+          <span class="view-stamp" id="stampReal">—</span>
+        </div>
+
+        <section class="block" id="realCard" hidden>
+          <div class="block-head">
+            <h2 class="block-title">Conta real · MEXC</h2>
+            <span class="block-hint" id="realHint"></span>
+          </div>
+          <div class="real-aviso" id="realAviso" hidden>
+            <b>A conta real ainda não está ligada.</b>
+            <span id="realAvisoTexto"></span>
+            <div class="real-aviso-passos">
+              <ol>
+                <li>Criar a conta na MEXC e fazer a verificação de identidade (KYC).</li>
+                <li>Gerar a chave em <b>API Management</b>: marcar <b>Leitura</b> e <b>Comércio</b>, deixar <b>Retirada</b> desligada, e colocar o IP desta máquina na whitelist.</li>
+                <li>Salvar a chave no arquivo de segredos (fora do OneDrive) com <code>node tools\salvar-chave-mexc.js</code>.</li>
+                <li>Ligar a conta com <code>node tools\ligar-mexc.js</code> e reiniciar o robô.</li>
+              </ol>
+              <p>Enquanto isso, o robô segue em simulação — nenhuma ordem real é enviada.</p>
+            </div>
+          </div>
+
+          <div id="realGrid">
+            <div class="lead" id="kpiReal" hidden>
+              <span class="kpi-l" id="kpiRealL">Equity · MEXC</span>
+              <span class="kpi-v" id="kpiRealV">—</span>
+              <span class="kpi-s" id="kpiRealS">—</span>
+            </div>
+
+            <section class="kpis" aria-label="Saldo da conta real">
+              <div class="kpi"><span class="kpi-l">Disponível</span><span class="kpi-v" id="realFree">—</span><span class="kpi-s">livre para operar</span></div>
+              <div class="kpi"><span class="kpi-l">Vinculado</span><span class="kpi-v" id="realLocked">—</span><span class="kpi-s">em margem</span></div>
+              <div class="kpi"><span class="kpi-l">P&amp;L não realizado</span><span class="kpi-v" id="realUnreal">—</span><span class="kpi-s">posições abertas</span></div>
+              <div class="kpi"><span class="kpi-l">Operações hoje</span><span class="kpi-v" id="realOpsCount">—</span><span class="kpi-s" id="realTodayPnl">—</span></div>
+            </section>
+
+            <div class="grid-2">
+              <div class="panel">
+                <h3 class="panel-title">Posições abertas <span class="panel-note" id="realPosCount"></span></h3>
+                <div class="table-wrap"><table class="cmp real-pos-table">
+                  <thead><tr><th>Símbolo</th><th>Lado</th><th class="num">Contratos</th><th class="num">Preço médio</th><th class="num">P&amp;L</th><th class="num">Alav.</th></tr></thead>
+                  <tbody id="realPosBody"><tr><td colspan="6" class="feed-empty">Sem posições abertas</td></tr></tbody>
+                </table></div>
+              </div>
+              <div class="panel">
+                <h3 class="panel-title">Operações de hoje</h3>
+                <div class="table-wrap"><table class="cmp real-ops-table">
+                  <thead><tr><th>Hora</th><th>Moeda</th><th>Lado</th><th class="num">Quantidade</th><th class="num">Preço</th><th class="num">Taxa</th></tr></thead>
+                  <tbody id="realOpsBody"><tr><td colspan="6" class="feed-empty">Nenhuma operação hoje</td></tr></tbody>
+                </table></div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <!-- ==================== CONTA DEMO ==================== -->
+      <section class="view" data-view="conta-demo">
+        <div class="view-head">
+          <h1 class="view-title">Conta demo</h1>
+          <p class="view-sub">A carteira simulada, com o resultado de cada dia desde o começo da conta.</p>
+          <span class="view-stamp" id="stampDemo">—</span>
+        </div>
+
+        <div class="lead" id="leadDemo" hidden>
+          <span class="kpi-l">Resultado do mês</span>
+          <span class="kpi-v" id="demoMesV">—</span>
+          <span class="kpi-s" id="demoMesS">—</span>
+        </div>
+
+        <section class="kpis" aria-label="Resumo da conta demo">
+          <div class="kpi"><span class="kpi-l">Vagas em uso</span><span class="kpi-v" id="demoVagas">—</span><span class="kpi-s">das 12 da carteira</span></div>
+          <div class="kpi"><span class="kpi-l">Operações no mês</span><span class="kpi-v" id="demoOps">—</span><span class="kpi-s" id="demoOpsS">—</span></div>
+          <div class="kpi"><span class="kpi-l">Acerto do mês</span><span class="kpi-v" id="demoAcerto">—</span><span class="kpi-s" id="demoAcertoS">—</span></div>
+          <div class="kpi"><span class="kpi-l">Risco em aberto</span><span class="kpi-v" id="demoRisco">—</span><span class="kpi-s">do saldo da conta</span></div>
+        </section>
+
+        <!-- ===== Dia a dia (planilha) ===== -->
+        <section class="block" id="diaryCard" hidden>
+          <div class="block-head">
+            <h2 class="block-title">Dia a dia</h2>
+            <span class="block-hint" id="diaryHint"></span>
+          </div>
+          <div class="panel">
+            <div class="trade-filter" id="diaryMonths"></div>
+            <div class="table-wrap"><table class="diary" id="diaryTable"></table></div>
+            <p class="panel-foot">Resultado de cada dia (00:00 às 24:00, Brasília) em % do saldo do começo do dia, só com as operações fechadas naquele dia. Embaixo de cada número: acertos/operações. A última coluna soma todos os operadores. A linha marcada indica o dia em que a escalação mudou. Use as abas de mês para ver um mês por vez.</p>
+          </div>
+        </section>
+      </section>
+
+      <!-- ==================== OPERADORES ==================== -->
+      <section class="view" data-view="operadores">
+        <div class="view-head">
+          <h1 class="view-title">Operadores</h1>
+          <p class="view-sub">Os doze robôs, o que cada um está vigiando agora e quanto já fez.</p>
+          <span class="view-stamp" id="stampBots">—</span>
+        </div>
+
+        <div class="lead" id="leadBot" hidden>
+          <span class="kpi-l" id="leadBotL">Melhor de hoje</span>
+          <span class="kpi-v" id="leadBotV">—</span>
+          <span class="kpi-s" id="leadBotS">—</span>
+        </div>
+
+        <!-- ===== Operadores ===== -->
+        <section class="block" id="botCard">
+          <div class="block-head">
+            <h2 class="block-title">Operadores</h2>
+            <span class="block-hint" id="botHint"></span>
+          </div>
+          <div id="botOff" class="panel bot-off">
+            O robô roda separado do painel e opera com <b>dinheiro fictício</b>. Para ligar: dois cliques em <b>start-bot.bat</b> na pasta do projeto e abra <b>http://localhost:8787</b>. Deixe a janela preta aberta.
+          </div>
+          <div id="botOn" hidden>
+            <div class="team-tabs" id="teamTabs"></div>
+            <p class="team-desc" id="teamDesc"></p>
+            <div class="signal-warn" id="botNet" hidden></div>
+            <div class="op-grid" id="opGrid"></div>
+            <div class="removed"><div class="bot-status" id="botStatus"></div><table><thead><tr id="botHead"></tr></thead><tbody id="botBody"></tbody></table><ul id="botEvents"></ul></div>
+          </div>
+        </section>
+
+        <!-- ===== Mesa de operações: a conversa entre os robôs ===== -->
+        <section class="block" id="deskCard" hidden> <!-- escondida a pedido do usuário (25/10); a mesa continua funcionando no robô -->
+          <div class="block-head">
+            <h2 class="block-title">Mesa de operações</h2>
+            <span class="block-hint" id="deskHint"></span>
+          </div>
+          <div class="desk">
+            <div class="panel desk-chat">
+              <ol class="desk-feed" id="deskFeed" data-lenis-prevent><li class="desk-empty">Aguardando o robô…</li></ol>
+            </div>
+            <aside class="panel desk-side">
+              <h3 class="panel-title">Avisos valendo agora</h3>
+              <ul class="desk-alerts" id="deskAlerts"><li class="desk-empty">Aguardando o robô…</li></ul>
+              <p class="panel-foot">Quando um robô toma stop numa moeda, ele avisa a mesa. Nas horas seguintes, quem for entrar naquela moeda e na mesma direção só entra com confirmação extra (volume forte e tendência firme). Se alguém sair no lucro ali, o aviso cai.</p>
+            </aside>
+          </div>
+        </section>
+
+        <!-- ===== Radar ===== -->
+        <section class="block" id="radarCard" hidden>
+          <div class="block-head">
+            <h2 class="block-title">Radar</h2>
+            <span class="block-hint" id="radarHint"></span>
+          </div>
+          <div class="panel">
+            <div class="table-wrap"><table class="radar" id="radarTable"></table></div>
+            <p class="panel-foot">
+              Cada célula mostra quantas condições daquele operador já estão cumpridas naquela moeda. Quanto mais clara, mais perto da entrada.
+              Em operação, a célula acende com ▲ (compra) ou ▼ (venda). Passe o mouse para ver o que falta e clique para abrir o gráfico.
+            </p>
+          </div>
+        </section>
+      </section>
+
+      <!-- ==================== GRÁFICO ==================== -->
+      <section class="view" data-view="grafico">
+        <div class="view-head">
+          <h1 class="view-title">Gráfico</h1>
+          <p class="view-sub">O preço com as camadas que os robôs leem: tendência, Supertrend, estrutura e o ponto de entrada.</p>
+          <span class="view-stamp" id="stampChart">—</span>
+        </div>
+
+        <section class="kpis" aria-label="Contexto do gráfico">
+          <div class="kpi"><span class="kpi-l">Próximo candle</span><span class="kpi-v" id="kpiNext">—</span><span class="kpi-s" id="kpiNextS">—</span></div>
+          <div class="kpi"><span class="kpi-l">Moeda</span><span class="kpi-v" id="grafMoeda">—</span><span class="kpi-s" id="grafTempo">—</span></div>
+        </section>
+
+        <div class="panel chart-container" id="chartBox">
+          <div class="chart-head">
+            <div class="tf-bar" id="tfBar">
+              <button class="tf-btn" data-tf="1m">1m</button>
+              <button class="tf-btn" data-tf="5m">5m</button>
+              <button class="tf-btn" data-tf="15m">15m</button>
+              <button class="tf-btn" data-tf="30m">30m</button>
+              <button class="tf-btn" data-tf="1h">1h</button>
+              <button class="tf-btn" data-tf="4h">4h</button>
+              <button class="tf-btn" data-tf="1d">1d</button>
+            </div>
+            <div class="picks">
+              <label class="pick">Moeda <select id="symSelect"></select></label>
+              <label class="pick" hidden>Estratégia <select id="stratSelect"></select></label>
+            </div>
+            <div class="chart-actions">
+              <button class="btn ghost" id="fitBtn" title="Voltar para os candles recentes">Ir para agora</button>
+              <button class="btn ghost" id="fsBtn" title="Tela cheia">Tela cheia</button>
+            </div>
+          </div>
+          <div class="layers" id="layers"></div>
+          <div class="chart-wrap">
+            <div class="hover-legend" id="hoverLegend"></div>
+            <div class="chart-main" id="mainChart"></div>
+          </div>
+          <div class="sub-label"><span>RSI 14</span><span class="tf-note" id="htfNote"></span><span class="strip-legend">Faixa no rodapé do gráfico: <b class="g">alta</b> com Supertrend verde e preço acima da EMA 200, <b class="r">baixa</b> no contrário, <b class="n">cinza</b> quando os sinais se contradizem.</span></div>
+          <div class="chart-sub" id="rsiChart"></div>
+        </div>
+
+        <!-- ===== Estudos ===== -->
+        <section class="block" id="studyCard" hidden>
+          <div class="block-head">
+            <h2 class="block-title">Estudos</h2>
+            <span class="block-hint" id="studyHint"></span>
+          </div>
+          <div class="panel">
+            <div class="trade-filter" id="studyTabs"></div>
+            <div id="studyBody"></div>
+          </div>
+        </section>
+      </section>
+
+      <!-- ==================== OPERAÇÕES ==================== -->
+      <section class="view" data-view="operacoes">
+        <div class="view-head">
+          <h1 class="view-title">Operações</h1>
+          <p class="view-sub">Cada entrada e saída do robô, com o resultado e o que a operação valia em risco.</p>
+          <span class="view-stamp" id="stampTrades">—</span>
+        </div>
+
+        <section class="kpis" aria-label="Resumo das operações">
+          <div class="kpi"><span class="kpi-l">Operações no mês</span><span class="kpi-v" id="opsTotal">—</span><span class="kpi-s" id="opsTotalS">—</span></div>
+          <div class="kpi"><span class="kpi-l">Acertos</span><span class="kpi-v" id="opsWins">—</span><span class="kpi-s" id="opsWinsS">—</span></div>
+          <div class="kpi"><span class="kpi-l">Resultado do mês</span><span class="kpi-v" id="opsPnl">—</span><span class="kpi-s" id="opsPnlS">—</span></div>
+          <div class="kpi"><span class="kpi-l">Operações abertas</span><span class="kpi-v" id="opsOpen">—</span><span class="kpi-s">em curso agora</span></div>
+        </section>
+
+        <!-- ===== Entradas e saídas ===== -->
+        <section class="block" id="tradesCard" hidden>
+          <div class="block-head">
+            <h2 class="block-title">Entradas e saídas</h2>
+            <span class="block-hint" id="tradesHint"></span>
+          </div>
+          <div class="panel">
+            <div class="trade-filter" id="tradeFilter"></div>
+            <div class="table-wrap">
+              <table class="cmp trades-table">
+                <thead><tr><th>Entrada</th><th>Operador</th><th>Moeda</th><th>Lado</th><th class="num">Alav.</th><th class="num">Preço entrada</th><th class="num">Stop</th><th class="num">Alvo</th><th>Saída</th><th class="num">Resultado</th><th class="num">% da conta</th><th>Situação</th></tr></thead>
+                <tbody id="tradesBody"></tbody>
+              </table>
+            </div>
+            <div class="trade-pager" id="tradePager"></div>
+            <p class="panel-foot">Resultados já descontam a taxa de 0,05% por lado. O stop travado marca o lucro travado. Passe o mouse numa linha para ver o resultado em R: R é quanto o operador arriscou nesta operação (medido na moeda da contabilidade, em dólar). Arriscou US$ 50 e ganhou US$ 100, foi +2R.</p>
+          </div>
+        </section>
+      </section>
+
+      <footer class="footer">
+        <span><b>PANTHEON</b> · operações simuladas com dinheiro fictício. Nenhuma ordem é enviada a corretoras.</span>
+        <span>Preços ao vivo da Binance. Não é recomendação de investimento.</span>
+      </footer>
+
+      <!-- Seções antigas, escondidas por enquanto (o JS ainda escreve nelas) -->
+      <div class="legacy" hidden>
+        <section class="readout removed" id="readout">
+        <div class="ro-item"><div class="ro-label">Tendência</div><div class="ro-val" id="roTrend">—</div><div class="ro-sub" id="roTrendSub"></div></div>
+        <div class="ro-item"><div class="ro-label">Tendência maior</div><div class="ro-val" id="roHtf">—</div><div class="ro-sub" id="roHtfSub"></div></div>
+        <div class="ro-item"><div class="ro-label">Estrutura</div><div class="ro-val" id="roStruct">—</div><div class="ro-sub" id="roStructSub"></div></div>
+        <div class="ro-item"><div class="ro-label">Momentum</div><div class="ro-val" id="roMom">—</div><div class="ro-sub" id="roMomSub"></div></div>
+        <div class="ro-item ro-wide"><div class="ro-label">O que muda o jogo (gatilhos de virada)</div><ul class="ro-list" id="roTriggers"></ul></div>
+      </section>
+
+      <div class="signal-section removed">
+        <div class="signal-box neutral" id="signalBox">
+          <div class="signal-top">
+            <div class="signal-direction" id="signalDir">AGUARDANDO DADOS</div>
+            <div class="signal-when" id="signalWhen"></div>
+          </div>
+          <div class="signal-owner" id="signalOwner" hidden></div>
+          <div class="signal-entry" id="signalEntry">Carregando candles da Binance...</div>
+          <div class="signal-warn" id="signalWarn" hidden></div>
+          <div class="strength">
+            <div class="strength-bar"><div class="strength-fill" id="strengthFill"></div></div>
+            <span id="strengthTxt">—</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card removed card-wide" id="curveCard" hidden>
+          <div class="card-title">Curva do saldo — % desde o início de cada operador</div>
+          <div class="curve-legend" id="curveLegend"></div>
+          <div class="curve-chart" id="curveChart"></div>
+          <div class="card-foot">Cada linha é o saldo de um operador (já com as operações abertas no ponto final). Linha subindo = ganhando; descendo = perdendo.</div>
+        </div>
+
+        <div class="card removed card-half" id="rankCard" hidden>
+          <div class="card-title">Ranking do time</div>
+          <div class="table-wrap">
+            <table class="cmp rank-table">
+              <thead><tr><th></th><th>Operador</th><th>Hoje</th><th>7 dias</th><th>Desde o início</th></tr></thead>
+              <tbody id="rankBody"></tbody>
+            </table>
+          </div>
+          <div class="card-foot">Ordenado pelo resultado desde o início. Clique para ver o gráfico do operador.</div>
+        </div>
+
+        <div class="card removed card-half" id="expectCard" hidden>
+          <div class="card-title">Esperado × realizado</div>
+          <div class="table-wrap">
+            <table class="cmp rank-table">
+              <thead><tr><th></th><th>Operador</th><th>Esperado (histórico)</th><th>Ao vivo</th><th></th></tr></thead>
+              <tbody id="expectBody"></tbody>
+            </table>
+          </div>
+          <div class="card-foot">
+            Acerto e resultado médio por operação (% da conta). O "esperado" vem das operações do histórico de cada operador.
+            Com 10 ou mais operações ao vivo dá para comparar. Se ficar muito abaixo do esperado, a estratégia não está se comportando como no histórico.
+          </div>
+        </div>
+
+        <div class="card removed card-wide" id="dailyCard" hidden>
+          <div class="card-title">Resultado por dia (% da conta) <span class="card-hint" id="dailyHint"></span></div>
+          <div class="table-wrap"><table class="radar daily" id="dailyTable"></table></div>
+          <div class="card-foot">Dia = 00:00 às 24:00 (horário de Brasília). Conta só operações já fechadas. Passe o mouse para ver quantas operações e o valor em dinheiro.</div>
+        </div>
+
+        <div class="card removed card-wide" id="memoryCard" hidden>
+          <div class="card-title">Memória — o que cada operador aprendeu com os erros</div>
+          <div class="mem-grid" id="memoryBox"></div>
+          <div class="card-foot">
+            Cada operação guarda o contexto em que entrou: força da tendência, RSI, volume, horário e moeda. A memória começa com as operações do histórico e soma as ao vivo.
+            Regras: 2 stops seguidos na mesma moeda pausam essa moeda por 24h. Um contexto com 20 ou mais operações e resultado médio ruim passa a exigir uma confirmação extra (volume forte e ADX ≥ 25).
+          </div>
+        </div>
+
+        <div class="card removed card-wide">
+          <div class="card-title">Comparação das estratégias neste timeframe <span class="card-hint" id="cmpHint"></span></div>
+          <div class="table-wrap">
+            <table class="cmp">
+              <thead><tr><th>Estratégia</th><th>Ops</th><th>Acerto</th><th>Ganho médio</th><th>Profit factor</th><th>Total</th><th>Por operação</th></tr></thead>
+              <tbody id="cmpBody"></tbody>
+            </table>
+          </div>
+          <div class="card-foot" id="cmpFoot">—</div>
+        </div>
+
+        <div class="card removed">
+          <div class="card-title">Checklist do sinal <span class="card-hint" id="checkSide"></span></div>
+          <div class="strat-desc" id="stratDesc"></div>
+          <ul class="checklist" id="checklist"></ul>
+          <div class="card-foot">O sinal só sai quando os filtros e o gatilho passam e há confirmações suficientes. Ele é avaliado no candle fechado e não muda depois.</div>
+        </div>
+
+        <div class="card removed">
+          <div class="card-title">Últimas operações da estratégia</div>
+          <ul class="bt-trades" id="btList"></ul>
+          <div class="card-foot" id="btFoot">—</div>
+        </div>
+
+        <div class="card removed">
+          <div class="card-title">Indicadores (candle fechado)</div>
+          <div class="ind-list">
+            <div class="ind-row"><span class="ind-name">Supertrend 10/3</span><div class="ind-right"><span class="ind-val" id="stVal">—</span><span class="badge" id="stBadge">—</span></div></div>
+            <div class="ind-row"><span class="ind-name">Canal 20 (máx / mín)</span><div class="ind-right"><span class="ind-val" id="dcVal">—</span><span class="badge" id="dcBadge">—</span></div></div>
+            <div class="ind-row"><span class="ind-name">EMA 200</span><div class="ind-right"><span class="ind-val" id="ema200Val">—</span><span class="badge" id="ema200Badge">—</span></div></div>
+            <div class="ind-row"><span class="ind-name">EMA 9 / 21 / 50</span><div class="ind-right"><span class="ind-val" id="emaVal">—</span><span class="badge" id="emaBadge">—</span></div></div>
+            <div class="ind-row"><span class="ind-name">ADX 14 (+DI / −DI)</span><div class="ind-right"><span class="ind-val" id="adxVal">—</span><span class="badge" id="adxBadge">—</span></div></div>
+            <div class="ind-row"><span class="ind-name">RSI 14</span><div class="ind-right"><span class="ind-val" id="rsiVal">—</span><span class="badge" id="rsiBadge">—</span></div></div>
+            <div class="ind-row"><span class="ind-name">MACD 12/26/9 (hist.)</span><div class="ind-right"><span class="ind-val" id="macdVal">—</span><span class="badge" id="macdBadge">—</span></div></div>
+            <div class="ind-row"><span class="ind-name">Bollinger %B</span><div class="ind-right"><span class="ind-val" id="bbVal">—</span><span class="badge" id="bbBadge">—</span></div></div>
+            <div class="ind-row"><span class="ind-name">VWAP (diária)</span><div class="ind-right"><span class="ind-val" id="vwapVal">—</span><span class="badge" id="vwapBadge">—</span></div></div>
+            <div class="ind-row"><span class="ind-name">ATR 14 (volatilidade)</span><div class="ind-right"><span class="ind-val" id="atrVal">—</span><span class="badge neut" id="atrBadge">—</span></div></div>
+            <div class="ind-row"><span class="ind-name">Volume vs média 20</span><div class="ind-right"><span class="ind-val" id="volVal">—</span><span class="badge" id="volBadge">—</span></div></div>
+          </div>
+        </div>
+
+        <div class="card removed">
+          <div class="card-title">SMC — Estrutura e zonas</div>
+          <div class="levels-list">
+            <div class="level-row res"><span class="level-name">Resistência 2</span><span class="level-price" id="res2">—</span></div>
+            <div class="level-row res"><span class="level-name">Resistência 1</span><span class="level-price" id="res1">—</span></div>
+            <div class="level-row cur"><span class="level-name">▶ Preço atual</span><span class="level-price" id="curSMC">—</span></div>
+            <div class="level-row sup"><span class="level-name">Suporte 1</span><span class="level-price" id="sup1">—</span></div>
+            <div class="level-row sup"><span class="level-name">Suporte 2</span><span class="level-price" id="sup2">—</span></div>
+            <div class="level-row ob"><span class="level-name">Order Block</span><span class="level-price" id="obLevel">—</span></div>
+            <div class="level-row ob"><span class="level-name">FVG aberto</span><span class="level-price" id="fvgLevel">—</span></div>
+          </div>
+          <div class="structure" id="structure">—</div>
+        </div>
+
+        <div class="card removed">
+          <div class="card-title">Wyckoff — Fase de mercado (contexto)</div>
+          <div class="wyckoff-phase">
+            <div class="phase-indicator">
+              <div class="phase-dot" id="phaseDot"></div>
+              <div>
+                <div class="phase-name" id="phaseName">Analisando...</div>
+                <div class="phase-desc" id="phaseDesc">Aguardando dados</div>
+              </div>
+            </div>
+            <div class="phase-action" id="phaseAction">—</div>
+          </div>
+          <div class="wyckoff-phases-ref">
+            <div class="phase-ref-item acc">Acumulação</div>
+            <div class="phase-ref-item markup">Markup</div>
+            <div class="phase-ref-item dist">Distribuição</div>
+            <div class="phase-ref-item mark">Markdown</div>
+          </div>
+          <div class="card-foot">SMC e Wyckoff são leitura de contexto e não entram nos sinais.</div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+  <div class="tip" id="tip" hidden></div>
+
+  <script src="js/api.js"></script>
+  <script src="js/moeda.js"></script>
+  <script src="js/conta.js"></script>
+  <script src="js/indicators.js"></script>
+  <script src="js/wyckoff.js"></script>
+  <script src="js/smc.js"></script>
+  <script src="js/signal.js"></script>
+  <script src="js/backtest.js"></script>
+  <script src="js/chart.js"></script>
+  <script src="js/main.js?v=20261125"></script>
+  <script src="js/shell.js?v=20261125"></script>
+  <script src="vendor/gsap.min.js"></script>
+  <script src="vendor/ScrollTrigger.min.js"></script>
+  <script src="vendor/lenis.min.js"></script>
+  <script src="js/pregao.js"></script>
+</body>
+</html>
